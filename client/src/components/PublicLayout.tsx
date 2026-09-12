@@ -29,7 +29,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
         />
         <div className="container relative flex h-28 items-center justify-center sm:h-32">
           <Link href="/" aria-label={`${BRAND_NAME} home`}>
-            <Wordmark className="h-14 sm:h-16" />
+            <Wordmark className="h-16 sm:h-20" />
           </Link>
         </div>
       </header>
@@ -77,58 +77,24 @@ function NavLink({
 }
 
 /**
- * El logotipo como SVG y no como PNG.
+ * El logotipo de la marca.
  *
- * La marca es una palabra sobre una onda, y ambas cosas son vectoriales: en
- * SVG se mantiene nítida a cualquier tamaño, pesa unos cientos de bytes y el
- * amarillo puede cambiar por CSS si una sección lo necesita. Un PNG con el
- * texto rasterizado obligaría a servir tres tamaños y se vería borroso en el
- * pie, que es donde se usa más pequeño.
+ * El archivo es el original de ACTIVE: la palabra dibujada como forma de onda,
+ * en amarillo sobre fondo transparente. Se sirve tal cual, sin recolorear ni
+ * agregarle sombra, porque el trazo ya es la identidad.
  *
- * La onda cruza por detrás de las letras, no por debajo: es lo que hace que la
- * palabra se lea como una señal y no como un texto con un adorno al pie.
+ * El width/height van declarados para que el navegador reserve el espacio antes
+ * de que la imagen cargue; sin ellos el header salta de alto cuando entra.
  */
 function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 620 150"
-      role="img"
-      aria-label={BRAND_NAME}
+    <img
+      src="/brand/logo.png"
+      alt={BRAND_NAME}
+      width={685}
+      height={243}
       className={`w-auto ${className}`}
-    >
-      <title>{BRAND_NAME}</title>
-
-      {/* Onda de fondo. Los picos altos caen entre letras para que ninguno
-          quede tapado por un asta vertical. */}
-      <polyline
-        points="10,80 70,80 92,34 112,122 134,58 152,96 176,80 250,80 268,20 288,136 308,52 328,104 348,80 430,80 452,40 470,118 492,62 512,92 536,80 610,80"
-        fill="none"
-        stroke="#ec008c"
-        strokeWidth="7"
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        opacity="0.95"
-      />
-
-      {/* Trazo negro por debajo del texto: separa las letras de la onda sin
-          tener que abrir un hueco en la propia onda. */}
-      <text
-        x="310"
-        y="104"
-        textAnchor="middle"
-        fontFamily="'Chakra Petch', system-ui, sans-serif"
-        fontSize="96"
-        fontWeight="700"
-        fontStyle="italic"
-        letterSpacing="6"
-        stroke="#08060d"
-        strokeWidth="14"
-        paintOrder="stroke"
-        fill="#f5e400"
-      >
-        ACTIVE
-      </text>
-    </svg>
+    />
   );
 }
 
@@ -143,7 +109,7 @@ function SiteFooter() {
         />
 
         <div className="relative">
-          <Wordmark className="mx-auto h-10" />
+          <Wordmark className="mx-auto h-12" />
 
           <div className="mx-auto mt-10 max-w-4xl">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#f5e400]">
