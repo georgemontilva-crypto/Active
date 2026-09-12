@@ -25,6 +25,9 @@ type PublicResult =
       valid: true;
       code: string;
       product: { name: string; subtitle: string | null; imageUrl: string | null } | null;
+      /** Línea a la que pertenece el código, con los COA de todos sus sabores. */
+      collection: string | null;
+      reports: { id: number; productName: string; batch: string | null; fileUrl: string }[];
       batch: string | null;
       verificationCount: number;
       maxVerifications: number;
@@ -79,6 +82,13 @@ export const codesRouter = appRouterFactory({
         userAgent,
       });
 
+      // Los COA de la línea entera, no solo los del producto al que apunta el
+      // código: el código se imprime para QUANTUM COMPLEX y puede acabar en
+      // cualquiera de sus cajas, así que quien acaba de verificar necesita
+      // poder abrir el del sabor que tiene en la mano.
+      const collection = outcome.product?.collection ?? null;
+      const reports = collection ? await db.listReportsByCollection(collection) : [];
+
       return {
         valid: true,
         code,
@@ -89,6 +99,13 @@ export const codesRouter = appRouterFactory({
               imageUrl: outcome.product.imageUrl,
             }
           : null,
+        collection,
+        reports: reports.map((r) => ({
+          id: r.id,
+          productName: r.productName,
+          batch: r.batch,
+          fileUrl: r.fileUrl,
+        })),
         batch: outcome.code.batch,
         verificationCount: outcome.code.verificationCount,
         maxVerifications: outcome.code.maxVerifications,

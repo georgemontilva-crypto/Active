@@ -1,7 +1,7 @@
 import { PublicLayout } from "@/components/PublicLayout";
 import { trpc } from "@/lib/trpc";
 import { BRAND_NAME, SUPPORT_EMAIL } from "@shared/const";
-import { AlertTriangle, Check, Loader2, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, Loader2, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 type VerifyResult = {
@@ -13,6 +13,8 @@ type VerifyResult = {
   maxVerifications?: number;
   previouslyVerified?: boolean;
   firstVerifiedAt?: Date | null;
+  collection?: string | null;
+  reports?: { id: number; productName: string; batch: string | null; fileUrl: string }[];
 };
 
 export default function Verify() {
@@ -192,6 +194,34 @@ function AuthenticResult({ result, onReset }: { result: VerifyResult; onReset: (
               First checked {new Date(result.firstVerifiedAt).toLocaleDateString()}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Los COA de la línea, aquí mismo.
+          El código es de QUANTUM COMPLEX y puede venir en cualquiera de los
+          cuatro sabores, así que mandarlo a buscar su reporte al menú es un
+          paso de más justo cuando acaba de confirmar que la caja es legítima. */}
+      {result.reports && result.reports.length > 0 && (
+        <div className="clip-notch mt-6 border border-white/10 bg-[#130e1e] p-5 text-left">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/45">
+            Lab reports{result.collection ? ` — ${result.collection}` : ""}
+          </p>
+          <ul className="mt-3 space-y-2">
+            {result.reports.map((r) => (
+              <li key={r.id}>
+                <a
+                  href={r.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-[#f5e400] underline-offset-4 decoration-2 hover:underline"
+                >
+                  {r.productName}
+                  {r.batch ? ` · ${r.batch}` : ""}
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

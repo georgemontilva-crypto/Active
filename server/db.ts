@@ -167,6 +167,38 @@ export async function deleteProduct(id: number) {
 /* ─── Lab reports ─────────────────────────────────────────────────────────── */
 
 /** Products with their reports nested, for the public Lab Reports page. */
+/**
+ * Reportes publicados de toda una línea de producto, con el nombre del sabor
+ * al que pertenece cada uno.
+ *
+ * Lo usa el resultado de verificación: el código se imprime para la línea
+ * (QUANTUM COMPLEX), no para un sabor, así que después de confirmar que el
+ * producto es auténtico lo útil es ofrecerle al cliente los COA de la línea
+ * entera y dejar que abra el de la caja que tiene en la mano.
+ */
+export async function listReportsByCollection(collection: string) {
+  const db = await requireDb();
+  const rows = await db
+    .select({
+      id: labReports.id,
+      title: labReports.title,
+      batch: labReports.batch,
+      fileUrl: labReports.fileUrl,
+      productName: products.name,
+    })
+    .from(labReports)
+    .innerJoin(products, eq(labReports.productId, products.id))
+    .where(
+      and(
+        eq(labReports.published, true),
+        eq(products.published, true),
+        eq(products.collection, collection)
+      )
+    )
+    .orderBy(asc(products.sortOrder), asc(labReports.sortOrder));
+  return rows;
+}
+
 export async function listProductsWithReports(opts: { publishedOnly?: boolean } = {}) {
   const db = await requireDb();
   const prodRows = await listProducts(opts);
