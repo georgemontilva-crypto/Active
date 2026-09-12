@@ -12,7 +12,8 @@
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "seed": "tsx server/seed.ts",
-    "mirror-reports": "tsx server/mirrorReports.ts"
+    "mirror-reports": "tsx server/mirrorReports.ts",
+    "import-codes": "tsx server/importCodes.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
