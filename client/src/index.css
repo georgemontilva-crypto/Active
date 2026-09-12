@@ -1,0 +1,385 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ACTIVE — sistema visual
+   Negro como base, magenta como color de marca y amarillo como señal.
+   El amarillo solo aparece donde hay que mirar (CTA, estado, foco): si se
+   reparte por toda la página deja de leerse como señal y se vuelve decoración.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Chakra Petch", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --ease-out-expo: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-expo: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+:root {
+  --radius: 0.25rem; /* casi recto: la marca es angular, no redondeada */
+
+  /* Paleta ACTIVE */
+  --active-ink: #08060d;
+  --active-surface: #130e1e;
+  --active-surface-2: #1b1428;
+  --active-magenta: #ec008c;
+  --active-magenta-deep: #8e0055;
+  --active-yellow: #f5e400;
+
+  --background: #08060d;
+  --foreground: #f4f2f8;
+  --card: #130e1e;
+  --card-foreground: #f4f2f8;
+  --popover: #130e1e;
+  --popover-foreground: #f4f2f8;
+  --primary: #ec008c;
+  --primary-foreground: #ffffff;
+  --secondary: #1b1428;
+  --secondary-foreground: #f4f2f8;
+  --muted: #1b1428;
+  --muted-foreground: rgba(244, 242, 248, 0.55);
+  --accent: #f5e400;
+  --accent-foreground: #08060d;
+  --destructive: #ff3b46;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #f5e400;
+  --chart-1: #ec008c;
+  --chart-2: #f5e400;
+  --chart-3: #b3006a;
+  --chart-4: #6d28d9;
+  --chart-5: #ffffff;
+  --sidebar: #0b0812;
+  --sidebar-foreground: rgba(244, 242, 248, 0.7);
+  --sidebar-primary: #ec008c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1b1428;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #f5e400;
+}
+
+/* El sitio es oscuro en ambos modos: la marca ACTIVE no tiene versión clara.
+   La clase .dark existe porque los componentes de shadcn la esperan. */
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+  ::selection {
+    background: var(--active-magenta);
+    color: #fff;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1280px;
+    }
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  /* ─── Texturas de empaque ────────────────────────────────────────────────
+     El mosaico de píxeles del empaque, reconstruido con dos capas: una
+     cuadrícula fina que da el "papel milimetrado" y bloques de color de
+     tamaños distintos que rompen la regularidad. Van como gradientes y no
+     como imagen para que puedan cambiar de color por sección. */
+  .pixel-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+
+  .pixel-mosaic {
+    background-color: var(--active-magenta-deep);
+    background-image:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.09) 25%, transparent 25%),
+      linear-gradient(225deg, rgba(0, 0, 0, 0.22) 25%, transparent 25%),
+      linear-gradient(to right, rgba(236, 0, 140, 0.9) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(236, 0, 140, 0.9) 1px, transparent 1px);
+    background-size:
+      48px 48px,
+      64px 64px,
+      16px 16px,
+      16px 16px;
+  }
+
+  /* Bloques sueltos de magenta sobre el negro: la misma idea del empaque,
+     pero a baja opacidad para que no compita con el texto encima. */
+  .pixel-scatter {
+    background-image:
+      linear-gradient(90deg, rgba(236, 0, 140, 0.16) 0 44px, transparent 44px 100%),
+      linear-gradient(90deg, rgba(236, 0, 140, 0.1) 0 22px, transparent 22px 100%),
+      linear-gradient(90deg, rgba(245, 228, 0, 0.07) 0 14px, transparent 14px 100%);
+    background-size:
+      178px 44px,
+      96px 22px,
+      254px 14px;
+    background-position:
+      12px 18px,
+      60px 96px,
+      140px 52px;
+    background-repeat: repeat;
+  }
+
+  /* Halo magenta ambiental. Un solo radial, sin animación de filtro: el
+     efecto se lee igual y no repinta la pantalla completa en cada frame. */
+  .magenta-glow {
+    background: radial-gradient(
+      closest-side,
+      rgba(236, 0, 140, 0.38) 0%,
+      rgba(236, 0, 140, 0.16) 45%,
+      transparent 78%
+    );
+  }
+
+  /* ─── Línea de onda ──────────────────────────────────────────────────────
+     Reemplaza el filete arcoíris del sitio anterior. Magenta → amarillo →
+     magenta, desplazándose: es el eco de la onda del logotipo. */
+  .wave-edge {
+    position: relative;
+  }
+  .wave-edge::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 1;
+    height: 2px;
+    background: linear-gradient(90deg, #8e0055, #ec008c, #f5e400, #ec008c, #8e0055);
+    background-size: 300% 100%;
+    animation: wave-slide 9s linear infinite;
+    pointer-events: none;
+  }
+
+  .wave-edge-top {
+    position: relative;
+  }
+  .wave-edge-top::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 1;
+    height: 2px;
+    background: linear-gradient(90deg, #8e0055, #ec008c, #f5e400, #ec008c, #8e0055);
+    background-size: 300% 100%;
+    animation: wave-slide 9s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes wave-slide {
+    from {
+      background-position: 0% 50%;
+    }
+    to {
+      background-position: 300% 50%;
+    }
+  }
+
+  /* Borde de gradiente en un solo elemento: relleno recortado al padding-box
+     y gradiente al border-box, con el borde transparente dejándolo pasar.
+     Un wrapper fingiendo el borde rompería el radio y el anillo de foco. */
+  .wave-border {
+    border: 1.5px solid transparent;
+    background:
+      linear-gradient(var(--chip-bg, #130e1e), var(--chip-bg, #130e1e)) padding-box,
+      linear-gradient(90deg, #ec008c, #f5e400, #ec008c) border-box;
+    background-size:
+      auto,
+      300% 100%;
+    animation: wave-slide 6s linear infinite;
+  }
+
+  /* ─── Tipografía de marca ────────────────────────────────────────────────
+     La sombra dura desplazada imita la impresión desalineada del empaque.
+     Es un offset entero en píxeles, sin blur: con blur se vuelve un brillo
+     genérico y pierde la referencia a la tinta corrida. */
+  .pixel-shadow {
+    text-shadow:
+      2px 2px 0 var(--active-magenta),
+      4px 4px 0 rgba(142, 0, 85, 0.55);
+  }
+
+  .pixel-shadow-sm {
+    text-shadow: 1px 1px 0 var(--active-magenta);
+  }
+
+  .magenta-halo {
+    box-shadow:
+      0 0 0 1px rgba(236, 0, 140, 0.45),
+      0 18px 50px -18px rgba(236, 0, 140, 0.65);
+  }
+
+  .yellow-halo {
+    box-shadow:
+      0 0 0 1px rgba(245, 228, 0, 0.5),
+      0 18px 50px -18px rgba(245, 228, 0, 0.4);
+  }
+
+  /* Esquinas cortadas: el mismo bisel del bloque "10 COUNT DISPLAY". */
+  .clip-notch {
+    clip-path: polygon(
+      14px 0,
+      100% 0,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      0 100%,
+      0 14px
+    );
+  }
+
+  /* ─── Interacción ────────────────────────────────────────────────────── */
+  .press {
+    transition: transform 160ms var(--ease-out-expo);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition:
+        opacity 600ms var(--ease-out-expo),
+        transform 600ms var(--ease-out-expo);
+    }
+    .reveal.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes active-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+  .animate-pulse-soft {
+    animation: active-pulse 2.4s ease-in-out infinite;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave-edge::after,
+    .wave-edge-top::before,
+    .wave-border,
+    .animate-pulse-soft {
+      animation: none;
+    }
+  }
+}
