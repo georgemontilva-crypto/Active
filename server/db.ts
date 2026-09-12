@@ -354,6 +354,10 @@ export async function addAuthCode(data: {
  * batch file is a common way to add the few codes that were missing, and
  * silently handing three fresh checks to codes already in circulation would
  * undo the limit for the whole batch.
+ *
+ * El descarte lo hace MySQL contra el índice único (`INSERT IGNORE`), no una
+ * consulta previa. Con lotes de cientos de miles de códigos ese SELECT eran
+ * cientos de viajes de ida y vuelta antes de escribir la primera fila.
  */
 export async function bulkInsertAuthCodes(
   codes: string[],
@@ -363,29 +367,81 @@ export async function bulkInsertAuthCodes(
   const unique = Array.from(new Set(codes.map((c) => c.trim()).filter(Boolean)));
   if (unique.length === 0) return { processed: 0, skipped: 0 };
 
-  const existing = new Set<string>();
-  const chunkSize = 500;
+  let inserted = 0;
+  const chunkSize = 1000;
   for (let i = 0; i < unique.length; i += chunkSize) {
-    const chunk = unique.slice(i, i + chunkSize);
-    const found = await db
-      .select({ code: authCodes.code })
-      .from(authCodes)
-      .where(sql`${authCodes.code} IN (${sql.join(chunk.map((c) => sql`${c}`), sql`, `)})`);
-    for (const row of found) existing.add(row.code);
-  }
-
-  const fresh = unique.filter((c) => !existing.has(c));
-  for (let i = 0; i < fresh.length; i += chunkSize) {
-    const chunk = fresh.slice(i, i + chunkSize).map((code) => ({
+    const chunk = unique.slice(i, i + chunkSize).map((code) => ({
       code,
       productId: opts.productId ?? null,
       batch: opts.batch ?? null,
       maxVerifications: opts.maxVerifications ?? 3,
     }));
-    if (chunk.length) await db.insert(authCodes).values(chunk);
+    if (!chunk.length) continue;
+    const result = (await db.insert(authCodes).ignore().values(chunk)) as unknown as [
+      { affectedRows?: number },
+      unknown,
+    ];
+    const affected = result?.[0]?.affectedRows;
+    inserted += typeof affected === "number" ? affected : chunk.length;
   }
 
-  return { processed: fresh.length, skipped: unique.length - fresh.length };
+  return { processed: inserted, skipped: unique.length - inserted };
+}
+
+/**
+ * Reasigna producto, lote o cupo de consultas a códigos que ya están cargados.
+ *
+ * Existe porque el archivo del cliente llega antes que la decisión de a qué
+ * producto pertenece, y con lotes de cientos de miles de códigos corregirlo
+ * fila por fila desde la tabla no es una opción.
+ *
+ * `scope` acota qué se toca. No hay un "todos" implícito: un UPDATE sin WHERE
+ * sobre esta tabla reescribe el catálogo entero de códigos en circulación, así
+ * que quien lo quiera tiene que pedirlo por su nombre.
+ */
+export async function bulkAssignAuthCodes(
+  scope: { kind: "all" } | { kind: "unassigned" } | { kind: "batch"; batch: string } | { kind: "search"; search: string },
+  data: { productId?: number | null; batch?: string | null; maxVerifications?: number }
+): Promise<number> {
+  const db = await requireDb();
+
+  let where;
+  if (scope.kind === "unassigned") where = sql`${authCodes.productId} is null`;
+  else if (scope.kind === "batch") where = eq(authCodes.batch, scope.batch);
+  else if (scope.kind === "search")
+    where = or(
+      like(authCodes.code, `%${scope.search}%`),
+      like(authCodes.batch, `%${scope.search}%`)
+    );
+
+  const set: Record<string, unknown> = {};
+  if (data.productId !== undefined) set.productId = data.productId;
+  if (data.batch !== undefined) set.batch = data.batch;
+  if (data.maxVerifications !== undefined) set.maxVerifications = data.maxVerifications;
+  if (Object.keys(set).length === 0) return 0;
+
+  const result = (await db.update(authCodes).set(set).where(where)) as unknown as [
+    { affectedRows?: number },
+    unknown,
+  ];
+  return result?.[0]?.affectedRows ?? 0;
+}
+
+/** Cuántos códigos tocaría un `bulkAssignAuthCodes` con ese mismo alcance. */
+export async function countAuthCodes(
+  scope: { kind: "all" } | { kind: "unassigned" } | { kind: "batch"; batch: string } | { kind: "search"; search: string }
+): Promise<number> {
+  const db = await requireDb();
+  let where;
+  if (scope.kind === "unassigned") where = sql`${authCodes.productId} is null`;
+  else if (scope.kind === "batch") where = eq(authCodes.batch, scope.batch);
+  else if (scope.kind === "search")
+    where = or(
+      like(authCodes.code, `%${scope.search}%`),
+      like(authCodes.batch, `%${scope.search}%`)
+    );
+  const rows = await db.select({ c: sql<number>`count(*)` }).from(authCodes).where(where);
+  return Number(rows[0]?.c ?? 0);
 }
 
 export async function updateAuthCode(

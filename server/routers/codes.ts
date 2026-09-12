@@ -172,6 +172,47 @@ export const codesRouter = appRouterFactory({
       return { success: true, processed, skipped };
     }),
 
+  /**
+   * Reasigna producto / lote / cupo a códigos ya cargados.
+   *
+   * El alcance se pide explícito y `all` no es el valor por defecto: un UPDATE
+   * sin filtro sobre esta tabla reescribe todos los códigos en circulación.
+   */
+  adminBulkAssign: adminAuthedProcedure
+    .input(
+      z.object({
+        scope: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("all") }),
+          z.object({ kind: z.literal("unassigned") }),
+          z.object({ kind: z.literal("batch"), batch: z.string().min(1).max(128) }),
+          z.object({ kind: z.literal("search"), search: z.string().min(1).max(128) }),
+        ]),
+        productId: z.number().int().nullable().optional(),
+        batch: z.string().max(128).nullable().optional(),
+        maxVerifications: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { scope, ...data } = input;
+      const updated = await db.bulkAssignAuthCodes(scope, {
+        ...data,
+        batch: data.batch === undefined ? undefined : data.batch?.trim() || null,
+      });
+      return { success: true, updated };
+    }),
+
+  /** Cuántos códigos tocaría un adminBulkAssign con ese alcance, para confirmar antes. */
+  adminCountScope: adminAuthedProcedure
+    .input(
+      z.discriminatedUnion("kind", [
+        z.object({ kind: z.literal("all") }),
+        z.object({ kind: z.literal("unassigned") }),
+        z.object({ kind: z.literal("batch"), batch: z.string().min(1).max(128) }),
+        z.object({ kind: z.literal("search"), search: z.string().min(1).max(128) }),
+      ])
+    )
+    .query(async ({ input }) => ({ count: await db.countAuthCodes(input) })),
+
   adminUpdate: adminAuthedProcedure
     .input(
       z.object({

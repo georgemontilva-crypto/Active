@@ -178,6 +178,19 @@ El orden importa: los reportes y los códigos cuelgan de un producto.
    importar el archivo del cliente (CSV o TXT, uno por línea o separados por comas)
    o pegar la lista.
 
+La importación del panel va **por bloques de 5.000** desde el navegador, con
+barra de progreso: un archivo de cientos de miles de códigos en una sola
+petición deja al servidor escribiendo varios minutos con la conexión abierta, y
+si el navegador o el proxy se rinden a mitad de camino no hay forma de saber
+cuántos entraron. En bloques, lo insertado queda insertado y reintentar es
+gratis. Hay que dejar la pestaña abierta mientras corre.
+
+Si el archivo llega antes de saber a qué producto pertenece, se importa sin
+producto y después se corrige con **Assign product to existing codes**, que
+reasigna producto y lote en bloque: por códigos sin producto, por lote, por
+texto, o todos. Antes de escribir muestra cuántos códigos coinciden y pide
+confirmación.
+
 Reimportar un lote **no resetea** los códigos que ya existen, los salta. Si los
 reseteara, reimportar un archivo para agregar tres códigos faltantes le devolvería
 tres consultas frescas a todo el lote que ya está en la calle.

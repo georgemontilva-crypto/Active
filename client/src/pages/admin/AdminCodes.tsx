@@ -2,7 +2,7 @@ import { AdminLayout, Card, Field, buttonClass, inputClass } from "@/components/
 import { Pagination, TableCard } from "@/components/admin/AdminTable";
 import { trpc } from "@/lib/trpc";
 import { DEFAULT_MAX_VERIFICATIONS } from "@shared/const";
-import { Ban, Check, Loader2, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { Ban, Check, Loader2, Plus, RotateCcw, Search, Tag, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,6 +18,18 @@ export default function AdminCodes() {
   const [maxVerifications, setMaxVerifications] = useState(DEFAULT_MAX_VERIFICATIONS);
   const [newCode, setNewCode] = useState("");
   const [pasted, setPasted] = useState("");
+
+  // Reasignación de códigos ya cargados
+  const [scopeKind, setScopeKind] = useState<"unassigned" | "batch" | "search" | "all">(
+    "unassigned"
+  );
+  const [scopeValue, setScopeValue] = useState("");
+  const [assignProductId, setAssignProductId] = useState<number | "">("");
+  const [assignBatch, setAssignBatch] = useState("");
+
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(
+    null
+  );
 
   const fileRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
@@ -48,19 +60,114 @@ export default function AdminCodes() {
     onError: (e) => toast.error(e.message || "Could not add code"),
   });
 
-  const bulk = trpc.codes.adminBulkImport.useMutation({
-    onSuccess: (r) => {
-      refresh();
+  /**
+   * La importación va por bloques desde el navegador.
+   *
+   * Un archivo del cliente trae cientos de miles de códigos. Mandarlo entero en
+   * una sola petición deja al servidor escribiendo varios minutos con la
+   * conexión abierta, y si el navegador, el proxy o la pestaña se rinden a
+   * mitad de camino no hay forma de saber cuántos entraron. En bloques, cada
+   * petición termina en segundos, lo ya insertado queda insertado, y reintentar
+   * es gratis porque los repetidos se descartan solos.
+   */
+  const bulk = trpc.codes.adminBulkImport.useMutation();
+
+  const CHUNK = 5000;
+
+  const parseCodes = (text: string) =>
+    text
+      .split(/[\r\n,;\t]+/)
+      .map((t) => t.trim().replace(/^["']|["']$/g, ""))
+      .filter(
+        (t) => t.length > 0 && !/^(id|code|codes|created|updated|product|batch)$/i.test(t)
+      );
+
+  const runImport = async (text: string) => {
+    const codes = parseCodes(text);
+    if (codes.length === 0) {
+      toast.error("No codes found in that file");
+      return;
+    }
+
+    let processed = 0;
+    let skipped = 0;
+    setImportProgress({ done: 0, total: codes.length });
+
+    try {
+      for (let i = 0; i < codes.length; i += CHUNK) {
+        const slice = codes.slice(i, i + CHUNK);
+        const r = await bulk.mutateAsync({ content: slice.join("\n"), ...common() });
+        processed += r.processed;
+        skipped += r.skipped;
+        setImportProgress({ done: Math.min(i + CHUNK, codes.length), total: codes.length });
+      }
+      toast.success(
+        skipped > 0
+          ? `Imported ${processed.toLocaleString()} codes (${skipped.toLocaleString()} already existed and were left untouched)`
+          : `Imported ${processed.toLocaleString()} codes`
+      );
       setPasted("");
       if (fileRef.current) fileRef.current.value = "";
-      toast.success(
-        r.skipped > 0
-          ? `Imported ${r.processed} codes (${r.skipped} already existed and were left untouched)`
-          : `Imported ${r.processed} codes`
+    } catch (e) {
+      toast.error(
+        `Import stopped after ${processed.toLocaleString()} codes: ${
+          e instanceof Error ? e.message : "unknown error"
+        }. The codes already imported were kept — run it again to continue.`
       );
+    } finally {
+      setImportProgress(null);
+      refresh();
+    }
+  };
+
+  const assign = trpc.codes.adminBulkAssign.useMutation({
+    onSuccess: (r) => {
+      refresh();
+      toast.success(`${r.updated.toLocaleString()} codes updated`);
     },
-    onError: (e) => toast.error(e.message || "Import failed"),
+    onError: (e) => toast.error(e.message || "Could not update those codes"),
   });
+
+  const buildScope = () => {
+    if (scopeKind === "batch") return { kind: "batch" as const, batch: scopeValue.trim() };
+    if (scopeKind === "search") return { kind: "search" as const, search: scopeValue.trim() };
+    if (scopeKind === "all") return { kind: "all" as const };
+    return { kind: "unassigned" as const };
+  };
+
+  const runAssign = async () => {
+    const scope = buildScope();
+    if ((scope.kind === "batch" || scope.kind === "search") && !scopeValue.trim()) {
+      toast.error("Type the batch or the text to match first");
+      return;
+    }
+    if (assignProductId === "" && !assignBatch.trim()) {
+      toast.error("Pick a product or type a batch to assign");
+      return;
+    }
+
+    // El conteo se pide antes de escribir: "asignar a todos" sobre esta tabla
+    // toca cada código en circulación, y el número es lo único que deja ver
+    // que el alcance no es el que se creía.
+    const { count } = await utils.codes.adminCountScope.fetch(scope);
+    if (count === 0) {
+      toast.error("No codes match that scope");
+      return;
+    }
+    const target =
+      assignProductId === ""
+        ? `batch ${assignBatch.trim()}`
+        : products.data?.find((p) => p.id === Number(assignProductId))?.name ?? "that product";
+    if (!confirm(`Assign ${count.toLocaleString()} codes to ${target}? This overwrites what they have now.`)) {
+      return;
+    }
+
+    assign.mutate({
+      scope,
+      ...(assignProductId === "" ? {} : { productId: Number(assignProductId) }),
+      ...(assignBatch.trim() ? { batch: assignBatch.trim() } : {}),
+    });
+  };
 
   const del = trpc.codes.adminDelete.useMutation({
     onSuccess: () => {
@@ -81,7 +188,7 @@ export default function AdminCodes() {
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    bulk.mutate({ content: await file.text(), ...common() });
+    await runImport(await file.text());
   };
 
   return (
@@ -147,13 +254,36 @@ export default function AdminCodes() {
             className={`${inputClass} mt-3 font-mono`}
           />
           <button
-            onClick={() => pasted.trim() && bulk.mutate({ content: pasted, ...common() })}
-            disabled={bulk.isPending || !pasted.trim()}
+            onClick={() => pasted.trim() && runImport(pasted)}
+            disabled={importProgress !== null || !pasted.trim()}
             className={`${buttonClass} mt-3`}
           >
-            {bulk.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {importProgress !== null ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
             Import pasted list
           </button>
+
+          {importProgress && (
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-white/50">
+                <span>
+                  {importProgress.done.toLocaleString()} / {importProgress.total.toLocaleString()}
+                </span>
+                <span>Keep this tab open</span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full bg-[#f5e400] transition-all"
+                  style={{
+                    width: `${Math.round((importProgress.done / importProgress.total) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card title="Add a single code" description="Useful for a replacement label or a one-off.">
@@ -175,6 +305,80 @@ export default function AdminCodes() {
               Add
             </button>
           </form>
+        </Card>
+      </div>
+
+      {/* Reasignación de códigos ya cargados */}
+      <div className="mt-5">
+        <Card
+          title="Assign product to existing codes"
+          description="For codes already in the database. Useful when the client's file arrives before it's decided which product it belongs to."
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Which codes">
+              <select
+                value={scopeKind}
+                onChange={(e) => setScopeKind(e.target.value as typeof scopeKind)}
+                className={inputClass}
+              >
+                <option value="unassigned">Codes with no product</option>
+                <option value="batch">Codes in a batch</option>
+                <option value="search">Codes matching text</option>
+                <option value="all">Every code</option>
+              </select>
+            </Field>
+
+            <Field
+              label={scopeKind === "batch" ? "Batch to match" : "Text to match"}
+              hint={
+                scopeKind === "unassigned" || scopeKind === "all"
+                  ? "Not needed for this scope."
+                  : undefined
+              }
+            >
+              <input
+                value={scopeValue}
+                onChange={(e) => setScopeValue(e.target.value)}
+                disabled={scopeKind === "unassigned" || scopeKind === "all"}
+                placeholder={scopeKind === "batch" ? "SD260813-078" : "9395"}
+                className={`${inputClass} disabled:opacity-40`}
+              />
+            </Field>
+
+            <Field label="Assign product">
+              <select
+                value={assignProductId}
+                onChange={(e) =>
+                  setAssignProductId(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className={inputClass}
+              >
+                <option value="">Leave as is</option>
+                {products.data?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Assign batch" hint="Leave empty to keep the batch they have.">
+              <input
+                value={assignBatch}
+                onChange={(e) => setAssignBatch(e.target.value)}
+                placeholder="SD260813-078"
+                className={inputClass}
+              />
+            </Field>
+          </div>
+
+          <button onClick={runAssign} disabled={assign.isPending} className={`${buttonClass} mt-4`}>
+            {assign.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Tag className="h-4 w-4" />}
+            Assign
+          </button>
+          <p className="mt-2 text-xs text-white/40">
+            You'll see how many codes match and have to confirm before anything is written.
+          </p>
         </Card>
       </div>
 
