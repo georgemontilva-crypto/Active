@@ -405,9 +405,13 @@ export default function AdminCodes() {
         </form>
 
         <TableCard>
-          <div className="overflow-x-auto">
+          {/* Scroll propio de la tabla, no de la página: con 50 filas por
+              página, dejar que la página entera se desplace esconde el
+              buscador y el paginador justo cuando hacen falta. La cabecera
+              queda pegada arriba para no perder de vista qué columna es qué. */}
+          <div className="max-h-[60vh] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-white/10 bg-white/[0.04] text-left text-xs uppercase tracking-wider text-white/50">
+              <thead className="sticky top-0 z-10 border-b border-white/10 bg-[#1b1428] text-left text-xs uppercase tracking-wider text-white/50">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Code</th>
                   <th className="px-5 py-3 font-semibold">Product</th>

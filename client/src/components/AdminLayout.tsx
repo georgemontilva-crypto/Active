@@ -52,14 +52,14 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
     href === "/admin" ? location === "/admin" : location.startsWith(href);
 
   return (
-    <div className="flex min-h-screen bg-[#0a0812] text-white">
+    <div className="flex h-screen overflow-hidden bg-[#0a0812] text-white">
       <aside
         className={cn(
-          "pixel-grid fixed inset-y-0 left-0 z-40 w-64 transform border-r border-white/10 bg-[#0b0812] text-white/70 transition-transform duration-300 md:static md:translate-x-0",
+          "pixel-grid fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col border-r border-white/10 bg-[#0b0812] text-white/70 transition-transform duration-300 md:static md:h-full md:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-white/15 px-5">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/15 px-5">
           <Link href="/admin" className="text-sm font-bold uppercase tracking-[0.2em]">
             <span className="italic text-[#f5e400]">{BRAND_NAME}</span>{" "}
             <span className="text-white/45">Admin</span>
@@ -68,7 +68,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="space-y-1 p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -86,7 +86,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
             </Link>
           ))}
         </nav>
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/15 p-3">
+        <div className="shrink-0 border-t border-white/15 p-3">
           <div className="truncate px-3.5 pb-2 text-xs text-white/70">{admin.email}</div>
           <button
             onClick={() => logout.mutate()}
@@ -102,8 +102,8 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
         <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="wave-edge sticky top-0 z-20 flex h-16 items-center gap-4 bg-[#130e1e] px-5">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="wave-edge z-20 flex h-16 shrink-0 items-center gap-4 bg-[#130e1e] px-5">
           <button className="md:hidden" onClick={() => setOpen(true)}>
             <Menu className="h-5 w-5" />
           </button>
@@ -115,7 +115,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
             View site →
           </Link>
         </header>
-        <div className="flex-1 p-5 md:p-8">{children}</div>
+        <div className="flex-1 overflow-y-auto p-5 md:p-8">{children}</div>
       </div>
     </div>
   );
