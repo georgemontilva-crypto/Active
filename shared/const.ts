@@ -13,8 +13,8 @@ export const THIRTY_DAYS_MS = 1000 * 60 * 60 * 24 * 30;
  * admin panel lives here, so renaming the site is one edit rather than a grep.
  */
 export const BRAND_NAME = "ACTIVE";
-export const BRAND_DOMAIN = "activebrand.com";
-export const SUPPORT_EMAIL = "support@activebrand.com";
+export const BRAND_DOMAIN = "getactivequantum.com";
+export const SUPPORT_EMAIL = "support@getactivequantum.com";
 
 /** Default number of times a single code may be verified before it stops working. */
 export const DEFAULT_MAX_VERIFICATIONS = 3;

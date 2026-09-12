@@ -1,25 +1,27 @@
 /**
- * Carga inicial del catálogo de ACTIVE.
- *
- * La lista está vacía a propósito: el catálogo de ACTIVE (productos, lotes y
- * COA) se administra desde el panel, que es donde el cliente lo mantiene. Este
- * archivo existe para cargas masivas puntuales — llenar PRODUCTS, correrlo, y
- * volver a vaciarlo.
+ * Carga inicial del catálogo de ACTIVE: los cuatro sabores de QUANTUM COMPLEX
+ * con su COA de California.
  *
  * Es idempotente y aditivo. Un producto cuyo slug ya existe se deja tal cual, y
  * un reporte cuya URL ya está en la base no se vuelve a insertar, así que
  * correrlo contra una base que el cliente ya editó no puede deshacer su
- * trabajo:
+ * trabajo. Córrelo las veces que quieras, de cualquiera de las dos formas:
  *
  *   DATABASE_URL="…" pnpm seed          (desde una máquina que alcance la BD)
  *   SEED_CATALOG=true                    (en el servidor; corre una vez al arrancar)
+ *
+ * Los COA se **enlazan** donde ya viven en vez de copiarse a R2: el mismo
+ * archivo en dos sitios es una cosa más que mantener en sincronía cuando se
+ * retestea un lote. Si más adelante quieres copias propias, `MIRROR_REPORTS`
+ * las baja a R2 y reescribe los enlaces.
  */
 import "dotenv/config";
 import * as db from "./db";
 
 const COLLECTION = "QUANTUM COMPLEX";
-const SUBTITLE = "10 COUNT DISPLAY — 80MG PER TAB";
-const DESCRIPTION = "";
+const SUBTITLE = "10 COUNT DISPLAY — 400MG PER PACK · 80MG PER TAB";
+const DESCRIPTION =
+  "ACTIVE Quantum Complex. 80mg por tableta, 4 porciones por tableta (20mg por porción), 10 unidades por display. Fórmula de liberación retardada. Solo para mayores de 21 años.";
 
 type Seed = {
   slug: string;
@@ -29,7 +31,38 @@ type Seed = {
   coa: string;
 };
 
-const PRODUCTS: Seed[] = [];
+const BASE = "https://www.getactivequantum.com";
+
+const PRODUCTS: Seed[] = [
+  {
+    slug: "quantum-complex-strawberry",
+    name: "Strawberry",
+    image: "/products/strawberry.webp",
+    batch: "SD260813-078",
+    coa: `${BASE}/SD260813-078_ACTIVE-QUT-Strawberry_California_COA_V1.pdf`,
+  },
+  {
+    slug: "quantum-complex-cherry-berry",
+    name: "Cherry Berry",
+    image: "/products/cherry-berry.webp",
+    batch: "SD260813-079",
+    coa: `${BASE}/SD260813-079_ACTIVE-QUT-Cherry_California_COA_V1.pdf`,
+  },
+  {
+    slug: "quantum-complex-blue-razz",
+    name: "Blue Razz",
+    image: "/products/blue-razz.webp",
+    batch: "SD260813-080",
+    coa: `${BASE}/SD260813-080_ACTIVE-QUT-Blueberry_California_COA_V1.pdf`,
+  },
+  {
+    slug: "quantum-complex-watermelon",
+    name: "Watermelon",
+    image: "/products/watermelon.webp",
+    batch: "SD260813-081",
+    coa: `${BASE}/SD260813-081_ACTIVE-QUT-Watermelon_California_COA_V1.pdf`,
+  },
+];
 
 export async function seedCatalog(): Promise<void> {
   let createdProducts = 0;

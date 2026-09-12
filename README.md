@@ -148,9 +148,10 @@ que un reinicio del contenedor no lo vuelva a disparar cada vez.
 DATABASE_URL="..." pnpm seed
 ```
 
-`server/seed.ts` viene con la lista **vacía**: el catálogo de ACTIVE se carga
-desde el panel. El archivo queda para cargas masivas puntuales — llenar
-`PRODUCTS`, correrlo y volver a vaciarlo.
+Crea los cuatro sabores de **QUANTUM COMPLEX** (Strawberry, Cherry Berry,
+Blue Razz, Watermelon) con su COA de California, enlazado en
+`getactivequantum.com`. Las imágenes de producto son estáticas, en
+`client/public/products/`.
 
 Es idempotente y aditivo: un producto cuyo slug ya existe se deja intacto, y un
 reporte cuya URL ya está registrada no se vuelve a insertar. Correrlo de nuevo
