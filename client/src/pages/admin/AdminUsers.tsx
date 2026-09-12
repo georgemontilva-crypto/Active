@@ -140,7 +140,10 @@ export default function AdminUsers() {
 
       <div className="mt-6">
         <TableCard>
-          <table className="w-full text-sm">
+          {/* La tabla scrollea en horizontal dentro de la tarjeta: en un móvil
+              no cabe, y sin esto empujaba el ancho de la página entera. */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b border-white/10 bg-white/[0.04] text-left text-xs uppercase tracking-wider text-white/50">
               <tr>
                 <th className="px-5 py-3 font-semibold">Email</th>
@@ -189,7 +192,8 @@ export default function AdminUsers() {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </TableCard>
       </div>
     </AdminLayout>

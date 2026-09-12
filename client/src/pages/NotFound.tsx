@@ -8,7 +8,7 @@ export default function NotFound() {
     <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#08060d] px-4 text-white">
       <div className="pixel-grid absolute inset-0 opacity-60" aria-hidden />
       <div
-        className="magenta-glow pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[520px] -translate-x-1/2 -translate-y-1/2"
+        className="magenta-glow pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[min(520px,130vw)] -translate-x-1/2 -translate-y-1/2"
         aria-hidden
       />
 

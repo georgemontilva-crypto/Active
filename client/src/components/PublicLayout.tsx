@@ -24,7 +24,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
         {/* El halo queda detrás del logotipo y se sale por arriba: el corte
             superior es lo que lo hace leer como luz y no como un círculo. */}
         <div
-          className="magenta-glow pointer-events-none absolute left-1/2 top-0 h-[320px] w-[520px] -translate-x-1/2 -translate-y-1/3"
+          className="magenta-glow pointer-events-none absolute left-1/2 top-0 h-[320px] w-[min(520px,130vw)] -translate-x-1/2 -translate-y-1/3"
           aria-hidden
         />
         <div className="container relative flex h-28 items-center justify-center sm:h-32">
@@ -104,7 +104,7 @@ function SiteFooter() {
       <div className="wave-edge-top relative overflow-hidden bg-[#08060d] px-5 pb-10 pt-14 text-center">
         <div className="pixel-grid absolute inset-0 opacity-60" aria-hidden />
         <div
-          className="magenta-glow pointer-events-none absolute bottom-0 left-1/2 h-[260px] w-[520px] -translate-x-1/2 translate-y-1/2"
+          className="magenta-glow pointer-events-none absolute bottom-0 left-1/2 h-[260px] w-[min(520px,130vw)] -translate-x-1/2 translate-y-1/2"
           aria-hidden
         />
 

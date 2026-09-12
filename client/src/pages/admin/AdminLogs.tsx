@@ -88,7 +88,7 @@ export default function AdminLogs() {
 
       <TableCard>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[680px] text-sm">
             <thead className="border-b border-white/10 bg-white/[0.04] text-left text-xs uppercase tracking-wider text-white/50">
               <tr>
                 <th className="px-5 py-3 font-semibold">Code</th>

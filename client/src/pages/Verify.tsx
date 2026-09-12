@@ -46,10 +46,10 @@ export default function Verify() {
 
   return (
     <PublicLayout>
-      <div className="relative">
+      <div className="relative overflow-hidden">
         <div className="pixel-grid pointer-events-none absolute inset-0 opacity-50" aria-hidden />
         <div
-          className="magenta-glow pointer-events-none absolute left-1/2 top-0 h-[420px] w-[620px] -translate-x-1/2 opacity-70"
+          className="magenta-glow pointer-events-none absolute left-1/2 top-0 h-[420px] w-[min(620px,140vw)] -translate-x-1/2 opacity-70"
           aria-hidden
         />
 

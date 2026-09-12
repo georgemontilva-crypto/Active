@@ -410,7 +410,7 @@ export default function AdminCodes() {
               buscador y el paginador justo cuando hacen falta. La cabecera
               queda pegada arriba para no perder de vista qué columna es qué. */}
           <div className="max-h-[60vh] overflow-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="sticky top-0 z-10 border-b border-white/10 bg-[#1b1428] text-left text-xs uppercase tracking-wider text-white/50">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Code</th>

@@ -38,7 +38,7 @@ export default function LabReports() {
 
   return (
     <PublicLayout>
-      <div className="relative">
+      <div className="relative overflow-hidden">
         <div className="pixel-scatter pointer-events-none absolute inset-0 opacity-40" aria-hidden />
 
         <div className="container relative py-12">

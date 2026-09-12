@@ -112,6 +112,15 @@
   html {
     scroll-behavior: smooth;
   }
+  /* Red de seguridad contra el desbordamiento lateral en móvil.
+     `clip` y no `hidden`: hidden convierte al elemento en contenedor de scroll
+     y con eso deja de funcionar el `position: sticky` de la navegación y de la
+     cabecera del panel. clip recorta sin crear ese contenedor. */
+  html,
+  body {
+    overflow-x: clip;
+    max-width: 100%;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
