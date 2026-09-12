@@ -33,6 +33,24 @@ type Seed = {
 
 const BASE = "https://www.getactivequantum.com";
 
+/**
+ * La línea como producto propio.
+ *
+ * Los códigos de verificación se imprimen para QUANTUM COMPLEX, no para un
+ * sabor: un mismo código puede acabar en cualquiera de las cuatro cajas. Como
+ * un código apunta a un producto, la línea necesita existir como tal para poder
+ * apuntar ahí y que el resultado de verificación diga "Quantum Complex" en vez
+ * de mentir con un sabor cualquiera.
+ *
+ * Va sin publicar y sin reportes, así que no aparece en Lab Reports: esa página
+ * solo muestra productos que tengan COA, y los COA son por sabor.
+ */
+const LINE_PRODUCT = {
+  slug: "quantum-complex",
+  name: "Quantum Complex",
+  subtitle: SUBTITLE,
+};
+
 const PRODUCTS: Seed[] = [
   {
     slug: "quantum-complex-strawberry",
@@ -68,6 +86,25 @@ export async function seedCatalog(): Promise<void> {
   let createdProducts = 0;
   let createdReports = 0;
 
+  /* La línea primero: es a donde apuntan los códigos de verificación. */
+  if (!(await db.getProductBySlug(LINE_PRODUCT.slug))) {
+    await db.createProduct({
+      slug: LINE_PRODUCT.slug,
+      name: LINE_PRODUCT.name,
+      collection: COLLECTION,
+      subtitle: LINE_PRODUCT.subtitle,
+      description: DESCRIPTION,
+      imageUrl: null,
+      imageKey: null,
+      sortOrder: 0,
+      published: false,
+    });
+    createdProducts++;
+    console.log(`+ product  ${LINE_PRODUCT.name} (línea; destino de los códigos)`);
+  } else {
+    console.log(`= product  ${LINE_PRODUCT.name} (already present, left alone)`);
+  }
+
   for (let index = 0; index < PRODUCTS.length; index++) {
     const seed = PRODUCTS[index];
     let product = await db.getProductBySlug(seed.slug);
@@ -81,7 +118,7 @@ export async function seedCatalog(): Promise<void> {
         description: DESCRIPTION,
         imageUrl: seed.image,
         imageKey: null,
-        sortOrder: index,
+        sortOrder: index + 1,
         published: true,
       });
       product = await db.getProductBySlug(seed.slug);

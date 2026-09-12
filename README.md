@@ -148,7 +148,9 @@ que un reinicio del contenedor no lo vuelva a disparar cada vez.
 DATABASE_URL="..." pnpm seed
 ```
 
-Crea los cuatro sabores de **QUANTUM COMPLEX** (Strawberry, Cherry Berry,
+Crea el producto de línea **Quantum Complex** (sin publicar, sin COA: es a
+donde apuntan los códigos de verificación, que se imprimen para la línea y no
+para un sabor) y los cuatro sabores de **QUANTUM COMPLEX** (Strawberry, Cherry Berry,
 Blue Razz, Watermelon) con su COA de California, enlazado en
 `getactivequantum.com`. Las imágenes de producto son estáticas, en
 `client/public/products/`.
