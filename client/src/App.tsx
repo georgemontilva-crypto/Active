@@ -1,3 +1,5 @@
+import { Toaster } from "sonner";
+
 import { useEffect, useLayoutEffect } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 
@@ -53,7 +55,8 @@ function Home() {
       : new URLSearchParams(window.location.search).get("code");
 
   useEffect(() => {
-    if (code) navigate(`/verify?code=${encodeURIComponent(code)}`, { replace: true });
+    if (code)
+      navigate(`/verify?code=${encodeURIComponent(code)}`, { replace: true });
   }, [code, navigate]);
 
   return code ? null : <LabReports />;
@@ -63,6 +66,22 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      {/* Sin esto no se ve ni un aviso en toda la app.
+          Todo el panel reporta con toast.success / toast.error, pero sonner
+          solo pinta donde esté montado su contenedor, y no estaba en ninguna
+          parte: guardar, fallar al guardar y no hacer nada se veían igual.
+          Va aquí arriba para que valga tanto para el panel como para el sitio. */}
+      <Toaster
+        position="top-center"
+        richColors
+        toastOptions={{
+          style: {
+            background: "#130e1e",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "#f4f2f8",
+          },
+        }}
+      />
       <Switch>
         {/* Public */}
         <Route path="/" component={Home} />

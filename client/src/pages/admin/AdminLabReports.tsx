@@ -18,7 +18,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 function formatSize(bytes?: number | null): string {
@@ -73,10 +73,22 @@ export default function AdminLabReports() {
     onError: e => toast.error(e.message || "Could not save the report"),
   });
 
+  /**
+   * El mensaje de éxito se fija antes de cada llamada.
+   *
+   * La misma mutación sirve para guardar la edición y para el ojito de
+   * publicar/ocultar, y "Report updated" después de ocultar un reporte es más
+   * confuso que útil. Guardar sin ningún aviso es peor todavía: el formulario
+   * se cierra y no hay forma de distinguir un guardado correcto de uno que
+   * nunca salió.
+   */
+  const updateMessage = useRef("Report updated");
+
   const update = trpc.catalog.updateLabReport.useMutation({
     onSuccess: () => {
       setEditingId(null);
       refresh();
+      toast.success(updateMessage.current);
     },
     onError: e => toast.error(e.message || "Could not save the changes"),
   });
@@ -102,9 +114,17 @@ export default function AdminLabReports() {
     },
     file: File | null
   ) => {
+    if (file && storage.data && !storage.data.configured) {
+      toast.error(
+        `Can't replace the PDF until R2 is set up in Railway. Missing: ${storage.data.missing.join(", ")}`
+      );
+      return;
+    }
+
     try {
       if (file) {
         const up = await editUpload.upload(file, "lab-report");
+        updateMessage.current = "Report updated and PDF replaced";
         update.mutate({
           id,
           ...values,
@@ -115,6 +135,7 @@ export default function AdminLabReports() {
         });
         return;
       }
+      updateMessage.current = "Report updated";
       update.mutate({ id, ...values });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -419,9 +440,15 @@ export default function AdminLabReports() {
                               ? "Hide from the public page"
                               : "Publish"
                           }
-                          onClick={() =>
-                            update.mutate({ id: r.id, published: !r.published })
-                          }
+                          onClick={() => {
+                            updateMessage.current = r.published
+                              ? "Report hidden from the public page"
+                              : "Report published";
+                            update.mutate({
+                              id: r.id,
+                              published: !r.published,
+                            });
+                          }}
                           className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-[#f5e400]"
                         >
                           {r.published ? (
