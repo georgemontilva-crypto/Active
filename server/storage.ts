@@ -17,7 +17,11 @@
  *   R2_BUCKET, R2_PUBLIC_URL
  */
 
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? "";
@@ -37,15 +41,36 @@ const R2_BUCKET = process.env.R2_BUCKET ?? "";
 const R2_PUBLIC_URL = sanitizePublicUrl(process.env.R2_PUBLIC_URL ?? "");
 
 function sanitizePublicUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/+$/, "");
+  let trimmed = raw.trim().replace(/\/+$/, "");
   if (!trimmed) return "";
+
+  /* Caso concreto y frecuente: el valor de la siguiente variable pegado al
+     final, sin separador ("…r2.devR2_BUCKET=active"). No lo detecta el parser
+     de URL porque "=" y "_" son válidos en un nombre de host, así que el
+     resultado es una URL bien formada que apunta a un dominio inexistente. */
+  const glued = trimmed.match(/^(https?:\/\/[^\s]*?)(R2_[A-Z_]+=.*)$/i);
+  if (glued) {
+    console.warn(
+      `[storage] R2_PUBLIC_URL traía otra variable pegada ("${glued[2]}"). ` +
+        `Revísala en Railway: son dos valores en el mismo campo.`
+    );
+    trimmed = glued[1].replace(/\/+$/, "");
+  }
+
   try {
     const url = new URL(trimmed);
     const clean = `${url.protocol}//${url.host}`;
-    if (clean !== trimmed) {
+
+    /* Un host con caracteres que no existen en un dominio real es basura
+       pegada, no un dominio raro: mejor decirlo que servir enlaces muertos. */
+    if (!/^[a-z0-9.-]+$/i.test(url.hostname)) {
+      console.error(
+        `[storage] R2_PUBLIC_URL tiene un dominio imposible: "${url.hostname}". ` +
+          `Los enlaces a archivos subidos no van a abrir.`
+      );
+    } else if (clean !== trimmed) {
       console.warn(
-        `[storage] R2_PUBLIC_URL venía como "${trimmed}" y se usará "${clean}". ` +
-          `Revisa esa variable en Railway: suele ser dos valores pegados en un mismo campo.`
+        `[storage] R2_PUBLIC_URL venía como "${raw.trim()}" y se usará "${clean}".`
       );
     }
     return clean;
@@ -57,10 +82,19 @@ function sanitizePublicUrl(raw: string): string {
   }
 }
 
+/** La base pública que el servidor está usando de verdad, para mostrarla en el panel. */
+export function publicBaseUrl(): string {
+  return R2_PUBLIC_URL;
+}
+
 /** True when every R2 variable is present. Surfaced to the admin panel. */
 export function isStorageConfigured(): boolean {
   return Boolean(
-    R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET && R2_PUBLIC_URL
+    R2_ACCOUNT_ID &&
+      R2_ACCESS_KEY_ID &&
+      R2_SECRET_ACCESS_KEY &&
+      R2_BUCKET &&
+      R2_PUBLIC_URL
   );
 }
 
@@ -127,7 +161,11 @@ export async function storagePresignPut(
 
   const uploadUrl = await getSignedUrl(
     client,
-    new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: contentType }),
+    new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      ContentType: contentType,
+    }),
     { expiresIn: expiresInSeconds }
   );
 
@@ -162,7 +200,9 @@ export async function storageDelete(relKey: string): Promise<void> {
   );
 }
 
-export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
+export async function storageGet(
+  relKey: string
+): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: publicUrlFor(key) };
 }

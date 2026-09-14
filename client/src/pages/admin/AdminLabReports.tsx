@@ -407,6 +407,16 @@ export default function AdminLabReports() {
           Use this if an uploaded PDF opens a broken link — it rebuilds the
           links from the files in storage. Reports linked to another site
           aren&apos;t touched.
+          {storage.data?.publicBase && (
+            <>
+              {" "}
+              Files are served from{" "}
+              <span className="font-mono text-white/70">
+                {storage.data.publicBase}
+              </span>
+              .
+            </>
+          )}
         </span>
       </div>
 

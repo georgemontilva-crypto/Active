@@ -6,6 +6,7 @@ import * as db from "../db";
 import {
   isStorageConfigured,
   missingStorageVars,
+  publicBaseUrl,
   storageDelete,
   storagePresignPut,
 } from "../storage";
@@ -85,6 +86,9 @@ export const catalogRouter = appRouterFactory({
   storageStatus: adminAuthedProcedure.query(() => ({
     configured: isStorageConfigured(),
     missing: missingStorageVars(),
+    /* La base real que usa el servidor. Mostrarla en el panel evita la
+       adivinanza de si una variable de Railway quedó bien puesta. */
+    publicBase: publicBaseUrl(),
   })),
 
   /**
