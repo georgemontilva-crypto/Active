@@ -28,7 +28,8 @@ export function useR2Upload() {
   ): Promise<UploadedFile> => {
     setProgress(0);
     try {
-      const mimeType = file.type || (kind === "lab-report" ? "application/pdf" : "image/jpeg");
+      const mimeType =
+        file.type || (kind === "lab-report" ? "application/pdf" : "image/jpeg");
       const { storageKey, uploadUrl, publicUrl } = await presign.mutateAsync({
         kind,
         fileName: file.name,
@@ -40,14 +41,24 @@ export function useR2Upload() {
         xhr.open("PUT", uploadUrl, true);
         // Must match the Content-Type the URL was signed for, or R2 rejects it.
         xhr.setRequestHeader("Content-Type", mimeType);
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable)
+            setProgress(Math.round((e.loaded / e.total) * 100));
         };
         xhr.onload = () =>
           xhr.status >= 200 && xhr.status < 300
             ? resolve()
             : reject(new Error(`Upload failed with status ${xhr.status}`));
-        xhr.onerror = () => reject(new Error("Upload failed: network error"));
+        // El navegador no le cuenta a XHR por qué falló un preflight, así que
+        // CORS, DNS caído y bucket inexistente llegan aquí como el mismo
+        // evento vacío. CORS es de lejos la causa más común, y sin nombrarla
+        // el mensaje manda a buscar el problema al lado equivocado.
+        xhr.onerror = () =>
+          reject(
+            new Error(
+              "Upload failed: the browser couldn't reach the bucket. This is almost always CORS — the R2 bucket has to allow PUT from this site's domain."
+            )
+          );
         xhr.send(file);
       });
 
