@@ -13,7 +13,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "seed": "tsx server/seed.ts",
     "mirror-reports": "tsx server/mirrorReports.ts",
-    "import-codes": "tsx server/importCodes.ts"
+    "import-codes": "tsx server/importCodes.ts",
+    "fix-urls": "tsx server/fixFileUrls.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

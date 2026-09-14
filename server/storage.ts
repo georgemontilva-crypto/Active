@@ -24,7 +24,38 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? "";
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? "";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? "";
 const R2_BUCKET = process.env.R2_BUCKET ?? "";
-const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL ?? "").replace(/\/+$/, "");
+/**
+ * Base pública del bucket, saneada.
+ *
+ * Pegar variables en el panel de Railway es propenso a que dos valores acaben
+ * en el mismo campo ("…r2.devR2_BUCKET=algo"), y el resultado no falla al
+ * arrancar: se guarda tal cual en la URL de cada archivo subido y solo se
+ * descubre cuando alguien hace clic y el enlace no abre. Aquí se corta todo lo
+ * que venga después del host y se avisa por consola, porque una URL base con
+ * ruta o con basura pegada nunca es lo que se quiso escribir.
+ */
+const R2_PUBLIC_URL = sanitizePublicUrl(process.env.R2_PUBLIC_URL ?? "");
+
+function sanitizePublicUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed);
+    const clean = `${url.protocol}//${url.host}`;
+    if (clean !== trimmed) {
+      console.warn(
+        `[storage] R2_PUBLIC_URL venía como "${trimmed}" y se usará "${clean}". ` +
+          `Revisa esa variable en Railway: suele ser dos valores pegados en un mismo campo.`
+      );
+    }
+    return clean;
+  } catch {
+    console.error(
+      `[storage] R2_PUBLIC_URL no es una URL válida: "${trimmed}". Los enlaces a archivos subidos no van a abrir.`
+    );
+    return trimmed;
+  }
+}
 
 /** True when every R2 variable is present. Surfaced to the admin panel. */
 export function isStorageConfigured(): boolean {
