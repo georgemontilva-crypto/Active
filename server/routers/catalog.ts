@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminAuthedProcedure, appRouterFactory, publicProc } from "../appTrpc";
+import { repairFileUrls } from "../fixFileUrls";
 import * as db from "../db";
 import {
   isStorageConfigured,
@@ -66,6 +67,20 @@ export const catalogRouter = appRouterFactory({
   }),
 
   /* ─── Admin: storage ────────────────────────────────────────────────────── */
+
+  /**
+   * Reescribe las URLs de los archivos propios a partir de su clave.
+   *
+   * La URL completa se guarda al subir, así que corregir R2_PUBLIC_URL después
+   * no arregla lo ya guardado. Esto vive en el panel y no solo en un script
+   * porque quien administra el sitio no tiene por qué tener el repo clonado
+   * para reparar un enlace roto.
+   */
+  repairFileUrls: adminAuthedProcedure.mutation(async () => {
+    requireStorage();
+    const result = await repairFileUrls();
+    return { success: true, ...result };
+  }),
 
   storageStatus: adminAuthedProcedure.query(() => ({
     configured: isStorageConfigured(),

@@ -9,6 +9,7 @@ import { useR2Upload } from "@/hooks/useR2Upload";
 import { trpc } from "@/lib/trpc";
 import {
   Check,
+  Link2,
   Eye,
   EyeOff,
   FileText,
@@ -38,6 +39,18 @@ export default function AdminLabReports() {
   // antes de que elija el archivo y no después de que falle.
   const storage = trpc.catalog.storageStatus.useQuery(undefined, {
     retry: false,
+  });
+
+  const repair = trpc.catalog.repairFileUrls.useMutation({
+    onSuccess: r => {
+      refresh();
+      toast.success(
+        r.fixed > 0
+          ? `${r.fixed} link${r.fixed === 1 ? "" : "s"} repaired`
+          : "All links were already correct"
+      );
+    },
+    onError: e => toast.error(e.message || "Could not repair the links"),
   });
 
   const [productId, setProductId] = useState<number | "">("");
@@ -376,6 +389,26 @@ export default function AdminLabReports() {
           </div>
         </form>
       </Card>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-white/45">
+        <button
+          onClick={() => repair.mutate()}
+          disabled={repair.isPending}
+          className="press inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/70 hover:bg-white/10 disabled:opacity-50"
+        >
+          {repair.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Link2 className="h-4 w-4" />
+          )}
+          Repair file links
+        </button>
+        <span>
+          Use this if an uploaded PDF opens a broken link — it rebuilds the
+          links from the files in storage. Reports linked to another site
+          aren&apos;t touched.
+        </span>
+      </div>
 
       <div className="mt-6 space-y-5">
         {products.data

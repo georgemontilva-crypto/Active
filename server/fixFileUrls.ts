@@ -14,7 +14,77 @@
  */
 import "dotenv/config";
 import * as db from "./db";
-import { isStorageConfigured, missingStorageVars, publicUrlFor } from "./storage";
+import {
+  isStorageConfigured,
+  missingStorageVars,
+  publicUrlFor,
+} from "./storage";
+
+export type UrlRepairResult = {
+  fixed: number;
+  alreadyOk: number;
+  external: number;
+  changes: {
+    kind: "report" | "product";
+    id: number;
+    from: string | null;
+    to: string;
+  }[];
+};
+
+/**
+ * Recalcula la URL pública de cada archivo propio a partir de su clave.
+ *
+ * Lo usa tanto el script de consola como el botón del panel, para que no haya
+ * dos versiones de la misma reparación que puedan divergir.
+ */
+export async function repairFileUrls(dryRun = false): Promise<UrlRepairResult> {
+  const result: UrlRepairResult = {
+    fixed: 0,
+    alreadyOk: 0,
+    external: 0,
+    changes: [],
+  };
+
+  for (const report of await db.listLabReports()) {
+    if (!report.fileKey) {
+      result.external++;
+      continue;
+    }
+    const expected = publicUrlFor(report.fileKey);
+    if (expected === report.fileUrl) {
+      result.alreadyOk++;
+      continue;
+    }
+    result.changes.push({
+      kind: "report",
+      id: report.id,
+      from: report.fileUrl,
+      to: expected,
+    });
+    if (!dryRun) await db.updateLabReport(report.id, { fileUrl: expected });
+    result.fixed++;
+  }
+
+  for (const product of await db.listProducts()) {
+    if (!product.imageKey) continue;
+    const expected = publicUrlFor(product.imageKey);
+    if (expected === product.imageUrl) {
+      result.alreadyOk++;
+      continue;
+    }
+    result.changes.push({
+      kind: "product",
+      id: product.id,
+      from: product.imageUrl,
+      to: expected,
+    });
+    if (!dryRun) await db.updateProduct(product.id, { imageUrl: expected });
+    result.fixed++;
+  }
+
+  return result;
+}
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -28,46 +98,34 @@ async function main() {
     process.exit(1);
   }
 
-  let fixed = 0;
-  let ok = 0;
-  let external = 0;
-
-  for (const report of await db.listLabReports()) {
-    if (!report.fileKey) {
-      external++;
-      continue;
-    }
-    const expected = publicUrlFor(report.fileKey);
-    if (expected === report.fileUrl) {
-      ok++;
-      continue;
-    }
-    console.log(`report ${report.id}: ${report.fileUrl}\n         → ${expected}`);
-    if (!dryRun) await db.updateLabReport(report.id, { fileUrl: expected });
-    fixed++;
-  }
-
-  for (const product of await db.listProducts()) {
-    if (!product.imageKey) continue;
-    const expected = publicUrlFor(product.imageKey);
-    if (expected === product.imageUrl) {
-      ok++;
-      continue;
-    }
-    console.log(`product ${product.id}: ${product.imageUrl}\n          → ${expected}`);
-    if (!dryRun) await db.updateProduct(product.id, { imageUrl: expected });
-    fixed++;
+  const result = await repairFileUrls(dryRun);
+  for (const change of result.changes) {
+    console.log(
+      `${change.kind} ${change.id}: ${change.from}\n         → ${change.to}`
+    );
   }
 
   console.log("");
-  console.log(`Corregidas: ${fixed}${dryRun ? " (dry-run: no se escribió nada)" : ""}`);
-  console.log(`Ya estaban bien: ${ok}`);
-  if (external) console.log(`Enlazadas a un sitio externo, intactas: ${external}`);
+  console.log(
+    `Corregidas: ${result.fixed}${dryRun ? " (dry-run: no se escribió nada)" : ""}`
+  );
+  console.log(`Ya estaban bien: ${result.alreadyOk}`);
+  if (result.external) {
+    console.log(`Enlazadas a un sitio externo, intactas: ${result.external}`);
+  }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch(err => {
-    console.error("Falló:", err);
-    process.exit(1);
-  });
+/* Solo como CLI. Sin esta guarda, importar el módulo desde el router
+   ejecutaría main() al arrancar el servidor y lo mataría con process.exit. */
+const isCli =
+  process.argv[1]?.endsWith("fixFileUrls.ts") ||
+  process.argv[1]?.endsWith("fixFileUrls.js");
+
+if (isCli) {
+  main()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error("Falló:", err);
+      process.exit(1);
+    });
+}
