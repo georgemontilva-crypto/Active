@@ -44,7 +44,7 @@ export const catalogRouter = appRouterFactory({
    */
   publicReports: publicProc.query(async () => {
     const rows = await db.listProductsWithReports({ publishedOnly: true });
-    return rows.map((p) => ({
+    return rows.map(p => ({
       id: p.id,
       slug: p.slug,
       name: p.name,
@@ -52,7 +52,7 @@ export const catalogRouter = appRouterFactory({
       subtitle: p.subtitle,
       description: p.description,
       imageUrl: p.imageUrl,
-      reports: p.reports.map((r) => ({
+      reports: p.reports.map(r => ({
         id: r.id,
         title: r.title,
         batch: r.batch,
@@ -90,13 +90,26 @@ export const catalogRouter = appRouterFactory({
     .mutation(async ({ input }) => {
       requireStorage();
       if (input.kind === "lab-report" && input.mimeType !== "application/pdf") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Lab reports must be PDF files" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Lab reports must be PDF files",
+        });
       }
-      if (input.kind === "product-image" && !input.mimeType.startsWith("image/")) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Product images must be image files" });
+      if (
+        input.kind === "product-image" &&
+        !input.mimeType.startsWith("image/")
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Product images must be image files",
+        });
       }
       const key = `${input.kind}s/${safeFileName(input.fileName)}`;
-      const { key: storageKey, uploadUrl, publicUrl } = await storagePresignPut(key, input.mimeType);
+      const {
+        key: storageKey,
+        uploadUrl,
+        publicUrl,
+      } = await storagePresignPut(key, input.mimeType);
       return { storageKey, uploadUrl, publicUrl };
     }),
 
@@ -126,9 +139,16 @@ export const catalogRouter = appRouterFactory({
       const slug = slugify(
         input.slug || [input.collection, input.name].filter(Boolean).join(" ")
       );
-      if (!slug) throw new TRPCError({ code: "BAD_REQUEST", message: "Could not derive a slug" });
+      if (!slug)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Could not derive a slug",
+        });
       if (await db.getProductBySlug(slug)) {
-        throw new TRPCError({ code: "CONFLICT", message: `A product with slug "${slug}" already exists` });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `A product with slug "${slug}" already exists`,
+        });
       }
       const product = await db.createProduct({
         slug,
@@ -173,7 +193,10 @@ export const catalogRouter = appRouterFactory({
       // Remove the objects before the rows: a failure here is logged rather
       // than thrown, so a bucket hiccup can't leave the product undeletable.
       if (isStorageConfigured()) {
-        for (const key of [...reports.map((r) => r.fileKey), product?.imageKey].filter(Boolean)) {
+        for (const key of [
+          ...reports.map(r => r.fileKey),
+          product?.imageKey,
+        ].filter(Boolean)) {
           try {
             await storageDelete(key as string);
           } catch (err) {
@@ -211,7 +234,10 @@ export const catalogRouter = appRouterFactory({
     )
     .mutation(async ({ input }) => {
       if (!(await db.getProductById(input.productId))) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Product not found",
+        });
       }
       await db.createLabReport({
         productId: input.productId,
@@ -239,11 +265,37 @@ export const catalogRouter = appRouterFactory({
         testedOn: z.string().max(32).nullable().optional(),
         sortOrder: z.number().int().optional(),
         published: z.boolean().optional(),
+        /** Reemplazo del archivo. Los cuatro viajan juntos o no viaja ninguno. */
+        fileUrl: z.string().min(1).max(1024).optional(),
+        fileKey: z.string().max(512).optional(),
+        fileName: z.string().max(255).nullable().optional(),
+        sizeBytes: z.number().int().nonnegative().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const { id, ...rest } = input;
+      const current = await db.getLabReportById(id);
+      if (!current)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
+
       await db.updateLabReport(id, rest);
+
+      /* El PDF viejo se borra DESPUÉS de que la fila apunta al nuevo, y solo si
+         el anterior era nuestro (fileKey propio) y de verdad cambió. Al revés,
+         un fallo al escribir la fila dejaría al reporte apuntando a un archivo
+         que ya no existe. Un fallo aquí solo deja basura en el bucket. */
+      const replaced =
+        rest.fileKey !== undefined && rest.fileKey !== current.fileKey;
+      if (replaced && current.fileKey && isStorageConfigured()) {
+        try {
+          await storageDelete(current.fileKey);
+        } catch (err) {
+          console.warn(
+            `[catalog] failed to delete replaced ${current.fileKey} from R2:`,
+            err
+          );
+        }
+      }
       return { success: true };
     }),
 
@@ -255,7 +307,10 @@ export const catalogRouter = appRouterFactory({
         try {
           await storageDelete(report.fileKey);
         } catch (err) {
-          console.warn(`[catalog] failed to delete ${report.fileKey} from R2:`, err);
+          console.warn(
+            `[catalog] failed to delete ${report.fileKey} from R2:`,
+            err
+          );
         }
       }
       await db.deleteLabReport(input.id);

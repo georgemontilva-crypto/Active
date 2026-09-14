@@ -1,19 +1,39 @@
-import { AdminLayout, Card, Field, buttonClass, inputClass } from "@/components/AdminLayout";
+import {
+  AdminLayout,
+  Card,
+  Field,
+  buttonClass,
+  inputClass,
+} from "@/components/AdminLayout";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { trpc } from "@/lib/trpc";
-import { Eye, EyeOff, FileText, Loader2, Trash2, Upload } from "lucide-react";
+import {
+  Check,
+  Eye,
+  EyeOff,
+  FileText,
+  Loader2,
+  Pencil,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 function formatSize(bytes?: number | null): string {
   if (!bytes || bytes <= 0) return "—";
   const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return mb >= 1
+    ? `${mb.toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 export default function AdminLabReports() {
   const utils = trpc.useUtils();
-  const products = trpc.catalog.adminProducts.useQuery(undefined, { retry: false });
+  const products = trpc.catalog.adminProducts.useQuery(undefined, {
+    retry: false,
+  });
 
   const [productId, setProductId] = useState<number | "">("");
   const [title, setTitle] = useState("");
@@ -45,10 +65,56 @@ export default function AdminLabReports() {
       refresh();
       toast.success("Lab report published");
     },
-    onError: (e) => toast.error(e.message || "Could not save the report"),
+    onError: e => toast.error(e.message || "Could not save the report"),
   });
 
-  const update = trpc.catalog.updateLabReport.useMutation({ onSuccess: refresh });
+  const update = trpc.catalog.updateLabReport.useMutation({
+    onSuccess: () => {
+      setEditingId(null);
+      refresh();
+    },
+    onError: e => toast.error(e.message || "Could not save the changes"),
+  });
+
+  /** Reporte abierto en edición. */
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const editUpload = useR2Upload();
+
+  /**
+   * Guarda los cambios de un reporte y, si hay archivo nuevo, lo sube antes.
+   *
+   * El orden importa: primero R2, después la fila. Si la subida falla, el
+   * reporte se queda intacto apuntando a su PDF de siempre, que es mucho mejor
+   * que una fila editada apuntando a un archivo que no llegó a existir.
+   */
+  const saveEdit = async (
+    id: number,
+    values: {
+      title: string;
+      batch: string | null;
+      lab: string | null;
+      testedOn: string | null;
+    },
+    file: File | null
+  ) => {
+    try {
+      if (file) {
+        const up = await editUpload.upload(file, "lab-report");
+        update.mutate({
+          id,
+          ...values,
+          fileUrl: up.publicUrl,
+          fileKey: up.storageKey,
+          fileName: up.fileName,
+          sizeBytes: up.sizeBytes,
+        });
+        return;
+      }
+      update.mutate({ id, ...values });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    }
+  };
   const remove = trpc.catalog.deleteLabReport.useMutation({
     onSuccess: () => {
       refresh();
@@ -106,17 +172,24 @@ export default function AdminLabReports() {
         </div>
       )}
 
-      <Card title="Upload a report" description="PDF only. The file goes straight to R2 from your browser.">
+      <Card
+        title="Upload a report"
+        description="PDF only. The file goes straight to R2 from your browser."
+      >
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Product">
               <select
                 value={productId}
-                onChange={(e) => setProductId(e.target.value === "" ? "" : Number(e.target.value))}
+                onChange={e =>
+                  setProductId(
+                    e.target.value === "" ? "" : Number(e.target.value)
+                  )
+                }
                 className={inputClass}
               >
                 <option value="">Select a product…</option>
-                {products.data?.map((p) => (
+                {products.data?.map(p => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
@@ -126,7 +199,7 @@ export default function AdminLabReports() {
             <Field label="Title" hint="What the customer sees in the list.">
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={e => setTitle(e.target.value)}
                 placeholder="Potency & Purity — Batch A1042"
                 className={inputClass}
               />
@@ -134,10 +207,13 @@ export default function AdminLabReports() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Batch" hint="Match the number printed on the package.">
+            <Field
+              label="Batch"
+              hint="Match the number printed on the package."
+            >
               <input
                 value={batch}
-                onChange={(e) => setBatch(e.target.value)}
+                onChange={e => setBatch(e.target.value)}
                 placeholder="A1042"
                 className={inputClass}
               />
@@ -145,7 +221,7 @@ export default function AdminLabReports() {
             <Field label="Lab">
               <input
                 value={lab}
-                onChange={(e) => setLab(e.target.value)}
+                onChange={e => setLab(e.target.value)}
                 placeholder="Kaycha Labs"
                 className={inputClass}
               />
@@ -154,14 +230,14 @@ export default function AdminLabReports() {
               <input
                 type="date"
                 value={testedOn}
-                onChange={(e) => setTestedOn(e.target.value)}
+                onChange={e => setTestedOn(e.target.value)}
                 className={inputClass}
               />
             </Field>
           </div>
 
           <div className="flex gap-2">
-            {(["upload", "link"] as const).map((m) => (
+            {(["upload", "link"] as const).map(m => (
               <button
                 key={m}
                 type="button"
@@ -182,15 +258,18 @@ export default function AdminLabReports() {
               <input
                 type="file"
                 accept="application/pdf,.pdf"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                onChange={e => setFile(e.target.files?.[0] ?? null)}
                 className="block w-full text-sm text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-[#ec008c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/10"
               />
             </Field>
           ) : (
-            <Field label="PDF URL" hint="The file stays where it is; only the link is saved.">
+            <Field
+              label="PDF URL"
+              hint="The file stays where it is; only the link is saved."
+            >
               <input
                 value={externalUrl}
-                onChange={(e) => setExternalUrl(e.target.value)}
+                onChange={e => setExternalUrl(e.target.value)}
                 placeholder="https://…/COA.pdf"
                 className={inputClass}
               />
@@ -200,7 +279,7 @@ export default function AdminLabReports() {
           {isUploading && (
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full bg-[#0b0812] transition-all"
+                className="h-full bg-[#f5e400] transition-all"
                 style={{ width: `${progress ?? 0}%` }}
               />
             </div>
@@ -217,7 +296,11 @@ export default function AdminLabReports() {
               }
               className={buttonClass}
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
               {isUploading ? `Uploading ${progress ?? 0}%` : "Publish report"}
             </button>
           </div>
@@ -226,50 +309,95 @@ export default function AdminLabReports() {
 
       <div className="mt-6 space-y-5">
         {products.data
-          ?.filter((p) => p.reports.length > 0)
-          .map((product) => (
-            <div key={product.id} className="rounded-2xl border border-white/10 bg-[#130e1e]">
+          ?.filter(p => p.reports.length > 0)
+          .map(product => (
+            <div
+              key={product.id}
+              className="rounded-2xl border border-white/10 bg-[#130e1e]"
+            >
               <div className="border-b border-white/10 px-5 py-4">
-                <h2 className="font-display text-lg font-semibold">{product.name}</h2>
+                <h2 className="font-display text-lg font-semibold">
+                  {product.name}
+                </h2>
                 <p className="text-sm text-white/50">
-                  {product.reports.length} report{product.reports.length === 1 ? "" : "s"}
+                  {product.reports.length} report
+                  {product.reports.length === 1 ? "" : "s"}
                 </p>
               </div>
               <ul className="divide-y divide-white/10">
-                {product.reports.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5 text-sm">
-                    <FileText className="h-4 w-4 shrink-0 text-white/40" />
-                    <a
-                      href={r.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
-                    >
-                      {r.title}
-                    </a>
-                    <span className="shrink-0 text-xs text-white/40">
-                      {[r.batch ? `Batch ${r.batch}` : null, r.testedOn, formatSize(r.sizeBytes)]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                    <button
-                      title={r.published ? "Hide from the public page" : "Publish"}
-                      onClick={() => update.mutate({ id: r.id, published: !r.published })}
-                      className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-[#f5e400]"
-                    >
-                      {r.published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
-                    <button
-                      title="Delete report"
-                      onClick={() => {
-                        if (confirm(`Delete "${r.title}"? The PDF is removed from storage too.`)) {
-                          remove.mutate({ id: r.id });
+                {product.reports.map(r => (
+                  <li key={r.id} className="px-5 py-3.5 text-sm">
+                    {editingId === r.id ? (
+                      <EditReportForm
+                        report={r}
+                        busy={update.isPending || editUpload.isUploading}
+                        progress={
+                          editUpload.isUploading ? editUpload.progress : null
                         }
-                      }}
-                      className="rounded-lg p-1.5 text-white/40 hover:bg-red-500/15 hover:text-red-300"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                        onCancel={() => setEditingId(null)}
+                        onSave={(values, file) => saveEdit(r.id, values, file)}
+                      />
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <FileText className="h-4 w-4 shrink-0 text-white/40" />
+                        <a
+                          href={r.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:underline"
+                        >
+                          {r.title}
+                        </a>
+                        <span className="shrink-0 text-xs text-white/40">
+                          {[
+                            r.batch ? `Batch ${r.batch}` : null,
+                            r.testedOn,
+                            formatSize(r.sizeBytes),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                        <button
+                          title="Edit report"
+                          onClick={() => setEditingId(r.id)}
+                          className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-[#f5e400]"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          title={
+                            r.published
+                              ? "Hide from the public page"
+                              : "Publish"
+                          }
+                          onClick={() =>
+                            update.mutate({ id: r.id, published: !r.published })
+                          }
+                          className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-[#f5e400]"
+                        >
+                          {r.published ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          title="Delete report"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Delete "${r.title}"? The PDF is removed from storage too.`
+                              )
+                            ) {
+                              remove.mutate({ id: r.id });
+                            }
+                          }}
+                          className="rounded-lg p-1.5 text-white/40 hover:bg-red-500/15 hover:text-red-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -277,5 +405,143 @@ export default function AdminLabReports() {
           ))}
       </div>
     </AdminLayout>
+  );
+}
+
+/**
+ * Edición en línea de un reporte ya cargado.
+ *
+ * El estado vive aquí y no en la página para que empezar a editar otro reporte
+ * no arrastre lo escrito en el anterior, y para que cancelar sea de verdad
+ * cancelar: al desmontarse, lo tecleado desaparece.
+ */
+function EditReportForm({
+  report,
+  busy,
+  progress,
+  onCancel,
+  onSave,
+}: {
+  report: {
+    id: number;
+    title: string;
+    batch: string | null;
+    lab: string | null;
+    testedOn: string | null;
+    fileName: string | null;
+  };
+  busy: boolean;
+  progress: number | null;
+  onCancel: () => void;
+  onSave: (
+    values: {
+      title: string;
+      batch: string | null;
+      lab: string | null;
+      testedOn: string | null;
+    },
+    file: File | null
+  ) => void;
+}) {
+  const [title, setTitle] = useState(report.title);
+  const [batch, setBatch] = useState(report.batch ?? "");
+  const [lab, setLab] = useState(report.lab ?? "");
+  const [testedOn, setTestedOn] = useState(report.testedOn ?? "");
+  const [file, setFile] = useState<File | null>(null);
+
+  return (
+    <div className="rounded-xl border border-[#ec008c]/40 bg-white/[0.04] p-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Title">
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Batch">
+          <input
+            value={batch}
+            onChange={e => setBatch(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Lab">
+          <input
+            value={lab}
+            onChange={e => setLab(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Tested on">
+          <input
+            type="date"
+            value={testedOn}
+            onChange={e => setTestedOn(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+      </div>
+
+      <div className="mt-4">
+        <Field
+          label="Replace PDF"
+          hint={
+            file
+              ? `${file.name} will replace ${report.fileName ?? "the current file"}.`
+              : "Leave empty to keep the current file."
+          }
+        >
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={e => setFile(e.target.files?.[0] ?? null)}
+            className={inputClass}
+          />
+        </Field>
+      </div>
+
+      {progress !== null && (
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full bg-[#f5e400] transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-2">
+        <button
+          disabled={busy || !title.trim()}
+          onClick={() =>
+            onSave(
+              {
+                title: title.trim(),
+                batch: batch.trim() || null,
+                lab: lab.trim() || null,
+                testedOn: testedOn || null,
+              },
+              file
+            )
+          }
+          className={buttonClass}
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+          {progress !== null ? `Uploading ${progress}%` : "Save changes"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={busy}
+          className="press inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/70 hover:bg-white/10 disabled:opacity-50"
+        >
+          <X className="h-4 w-4" />
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }

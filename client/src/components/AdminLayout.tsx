@@ -26,7 +26,13 @@ const NAV = [
   { label: "Admin Users", href: "/admin/users", icon: Users },
 ];
 
-export function AdminLayout({ title, children }: { title: string; children: React.ReactNode }) {
+export function AdminLayout({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   const { admin, isLoading } = useAdminGuard();
   const [location, navigate] = useLocation();
   const [open, setOpen] = useState(false);
@@ -60,7 +66,10 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
         )}
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/15 px-5">
-          <Link href="/admin" className="text-sm font-bold uppercase tracking-[0.2em]">
+          <Link
+            href="/admin"
+            className="text-sm font-bold uppercase tracking-[0.2em]"
+          >
             <span className="italic text-[#f5e400]">{BRAND_NAME}</span>{" "}
             <span className="text-white/45">Admin</span>
           </Link>
@@ -69,7 +78,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
           </button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => (
+          {NAV.map(item => (
             <Link
               key={item.href}
               href={item.href}
@@ -87,7 +96,9 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
           ))}
         </nav>
         <div className="shrink-0 border-t border-white/15 p-3">
-          <div className="truncate px-3.5 pb-2 text-xs text-white/70">{admin.email}</div>
+          <div className="truncate px-3.5 pb-2 text-xs text-white/70">
+            {admin.email}
+          </div>
           <button
             onClick={() => logout.mutate()}
             className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-white/40 transition-colors hover:bg-white/5 hover:text-white"
@@ -99,7 +110,10 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
       </aside>
 
       {open && (
-        <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setOpen(false)}
+        />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -107,7 +121,9 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
           <button className="md:hidden" onClick={() => setOpen(true)}>
             <Menu className="h-5 w-5" />
           </button>
-          <h1 className="font-display text-xl font-bold tracking-tight">{title}</h1>
+          <h1 className="font-display text-xl font-bold tracking-tight">
+            {title}
+          </h1>
           <Link
             href="/"
             className="ml-auto text-sm font-medium text-white/40 underline-offset-4 hover:text-[#f5e400] hover:underline"
@@ -135,7 +151,9 @@ export function Card({
   return (
     <div className="rounded-2xl border border-white/10 bg-[#130e1e] p-6">
       <h2 className="font-display text-lg font-semibold">{title}</h2>
-      {description && <p className="mt-1 text-sm text-white/50">{description}</p>}
+      {description && (
+        <p className="mt-1 text-sm text-white/50">{description}</p>
+      )}
       <div className="mt-4">{children}</div>
     </div>
   );
