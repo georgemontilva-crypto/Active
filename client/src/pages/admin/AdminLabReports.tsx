@@ -34,6 +34,11 @@ export default function AdminLabReports() {
   const products = trpc.catalog.adminProducts.useQuery(undefined, {
     retry: false,
   });
+  // Si faltan variables de R2 la subida no puede funcionar, y conviene decirlo
+  // antes de que elija el archivo y no después de que falle.
+  const storage = trpc.catalog.storageStatus.useQuery(undefined, {
+    retry: false,
+  });
 
   const [productId, setProductId] = useState<number | "">("");
   const [title, setTitle] = useState("");
@@ -122,9 +127,39 @@ export default function AdminLabReports() {
     },
   });
 
+  /**
+   * Validación con motivo, en vez de un botón apagado.
+   *
+   * Antes el botón se deshabilitaba solo si faltaba producto, título o archivo,
+   * y desde fuera un botón apagado es indistinguible de uno roto: se hace clic,
+   * no pasa nada y no hay forma de saber qué falta. Ahora el botón siempre
+   * responde y dice exactamente qué le falta.
+   */
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (productId === "" || !title.trim()) return;
+
+    if (productId === "") {
+      toast.error("Pick the product this report belongs to");
+      return;
+    }
+    if (!title.trim()) {
+      toast.error("The report needs a title");
+      return;
+    }
+    if (mode === "upload" && !file) {
+      toast.error("Choose the PDF to upload");
+      return;
+    }
+    if (mode === "link" && !externalUrl.trim()) {
+      toast.error("Paste the URL of the report");
+      return;
+    }
+    if (mode === "upload" && storage.data && !storage.data.configured) {
+      toast.error(
+        `Uploads are off until R2 is set up in Railway. Missing: ${storage.data.missing.join(", ")}`
+      );
+      return;
+    }
 
     const base = {
       productId: Number(productId),
@@ -136,7 +171,6 @@ export default function AdminLabReports() {
 
     if (mode === "link") {
       const url = externalUrl.trim();
-      if (!url) return;
       create.mutate({
         ...base,
         fileUrl: url,
@@ -146,9 +180,8 @@ export default function AdminLabReports() {
       return;
     }
 
-    if (!file) return;
     try {
-      const up = await upload(file, "lab-report");
+      const up = await upload(file!, "lab-report");
       create.mutate({
         ...base,
         fileUrl: up.publicUrl,
@@ -166,6 +199,20 @@ export default function AdminLabReports() {
 
   return (
     <AdminLayout title="Lab Reports">
+      {storage.data && !storage.data.configured && (
+        <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-sm text-amber-200">
+          <p className="font-semibold">
+            Uploads are off: R2 isn&apos;t configured.
+          </p>
+          <p className="mt-1">
+            Missing in Railway:{" "}
+            <span className="font-mono">{storage.data.missing.join(", ")}</span>
+            . You can still add reports with the <strong>Link</strong> mode
+            meanwhile.
+          </p>
+        </div>
+      )}
+
       {noProducts && (
         <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-sm text-amber-200">
           Create a product first — every lab report belongs to one.
@@ -258,7 +305,18 @@ export default function AdminLabReports() {
               <input
                 type="file"
                 accept="application/pdf,.pdf"
-                onChange={e => setFile(e.target.files?.[0] ?? null)}
+                onChange={e => {
+                  const picked = e.target.files?.[0] ?? null;
+                  setFile(picked);
+                  // El título es obligatorio y el nombre del archivo casi
+                  // siempre sirve: se propone, y se puede cambiar. Solo si
+                  // está vacío, para no pisar lo que ya escribió.
+                  if (picked && !title.trim()) {
+                    setTitle(
+                      picked.name.replace(/\.pdf$/i, "").replace(/[_]+/g, " ")
+                    );
+                  }
+                }}
                 className="block w-full text-sm text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-[#ec008c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/10"
               />
             </Field>
@@ -286,16 +344,7 @@ export default function AdminLabReports() {
           )}
 
           <div>
-            <button
-              type="submit"
-              disabled={
-                busy ||
-                productId === "" ||
-                !title.trim() ||
-                (mode === "upload" ? !file : !externalUrl.trim())
-              }
-              className={buttonClass}
-            >
+            <button type="submit" disabled={busy} className={buttonClass}>
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
