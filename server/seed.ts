@@ -31,7 +31,14 @@ type Seed = {
   coa: string;
 };
 
-const BASE = "https://www.getactivequantum.com";
+/* Los COA viven en el propio repo, servidos por el sitio.
+   Enlazarlos a un dominio ajeno los deja fuera de nuestro control: si ese sitio
+   los mueve o se cae, los cuatro reportes se rompen a la vez y aquí no hay nada
+   que se pueda hacer. Aquí van versionados, sin R2 de por medio y sin CORS. */
+const BASE = "/lab-reports";
+
+const LAB = "PharmLabs";
+const TESTED_ON = "2026-08-13";
 
 /**
  * La línea como producto propio.
@@ -57,32 +64,33 @@ const PRODUCTS: Seed[] = [
     name: "Strawberry",
     image: "/products/strawberry.webp",
     batch: "SD260813-078",
-    coa: `${BASE}/SD260813-078_ACTIVE-QUT-Strawberry_California_COA_V1.pdf`,
+    coa: `${BASE}/ACTIVE-QUT-Strawberry.pdf`,
   },
   {
     slug: "quantum-complex-cherry-berry",
     name: "Cherry Berry",
     image: "/products/cherry-berry.webp",
     batch: "SD260813-079",
-    coa: `${BASE}/SD260813-079_ACTIVE-QUT-Cherry_California_COA_V1.pdf`,
+    coa: `${BASE}/ACTIVE-QUT-Cherry.pdf`,
   },
   {
     slug: "quantum-complex-blue-razz",
     name: "Blue Razz",
     image: "/products/blue-razz.webp",
     batch: "SD260813-080",
-    coa: `${BASE}/SD260813-080_ACTIVE-QUT-Blueberry_California_COA_V1.pdf`,
+    coa: `${BASE}/ACTIVE-QUT-Blueberry.pdf`,
   },
   {
     slug: "quantum-complex-watermelon",
     name: "Watermelon",
     image: "/products/watermelon.webp",
     batch: "SD260813-081",
-    coa: `${BASE}/SD260813-081_ACTIVE-QUT-Watermelon_California_COA_V1.pdf`,
+    coa: `${BASE}/ACTIVE-QUT-Watermelon.pdf`,
   },
 ];
 
-export async function seedCatalog(): Promise<void> {
+export async function seedCatalog(opts: { refreshReports?: boolean } = {}): Promise<void> {
+  let refreshedReports = 0;
   let createdProducts = 0;
   let createdReports = 0;
 
@@ -134,8 +142,32 @@ export async function seedCatalog(): Promise<void> {
     }
 
     const existing = await db.listLabReports(product.id);
-    if (existing.some((r) => r.fileUrl === seed.coa)) {
+    if (existing.some(r => r.fileUrl === seed.coa)) {
       console.log(`= report   ${seed.batch} (already present)`);
+      continue;
+    }
+
+    /* Modo refresco: en vez de agregar un reporte más, se reapunta el que ya
+       hay. Es lo que hace falta cuando el laboratorio manda una versión nueva
+       del mismo COA — crear otro dejaría los dos publicados y el cliente
+       viendo dos enlaces para el mismo lote, sin saber cuál es el bueno.
+       Va detrás de una opción y no por defecto porque pisa lo que el panel
+       tenga guardado para esos cuatro productos. */
+    if (opts.refreshReports && existing.length > 0) {
+      const target = existing[0];
+      await db.updateLabReport(target.id, {
+        title: `California COA — Batch ${seed.batch}`,
+        batch: seed.batch,
+        lab: LAB,
+        testedOn: TESTED_ON,
+        fileUrl: seed.coa,
+        fileKey: "",
+        fileName: seed.coa.split("/").pop() ?? null,
+        sizeBytes: null,
+        published: true,
+      });
+      refreshedReports++;
+      console.log(`~ report   ${seed.batch} → ${seed.coa}`);
       continue;
     }
 
@@ -143,8 +175,8 @@ export async function seedCatalog(): Promise<void> {
       productId: product.id,
       title: `California COA — Batch ${seed.batch}`,
       batch: seed.batch,
-      lab: null,
-      testedOn: null,
+      lab: LAB,
+      testedOn: TESTED_ON,
       fileUrl: seed.coa,
       fileKey: "",
       fileName: seed.coa.split("/").pop() ?? null,
@@ -157,21 +189,27 @@ export async function seedCatalog(): Promise<void> {
   }
 
   console.log(
-    `[Seed] Done. ${createdProducts} product(s) and ${createdReports} report(s) added.`
+    `[Seed] Done. ${createdProducts} product(s) and ${createdReports} report(s) added` +
+      `${refreshedReports ? `, ${refreshedReports} report(s) refreshed` : ""}.`
   );
 }
 
 /**
- * Boot hook. Gated on SEED_CATALOG so a redeploy doesn't silently re-run it
+ * Boot hook. `SEED_CATALOG=true` carga lo que falte; `SEED_CATALOG=refresh`
+ * además reapunta los reportes de estos cuatro productos a los COA de este
+ * archivo, para cuando el laboratorio manda una versión nueva.
+ *
+ * Gated on SEED_CATALOG so a redeploy doesn't silently re-run it
  * every time the container restarts; set the variable, wait for the deploy,
  * then remove it. A failure is logged and swallowed — the catalogue is content,
  * and the site should still come up and verify codes without it.
  */
 export async function seedCatalogIfRequested(): Promise<void> {
-  if (process.env.SEED_CATALOG !== "true") return;
+  const mode = process.env.SEED_CATALOG;
+  if (mode !== "true" && mode !== "refresh") return;
   try {
     console.log("[Seed] SEED_CATALOG is set — loading the ACTIVE catalogue…");
-    await seedCatalog();
+    await seedCatalog({ refreshReports: mode === "refresh" });
   } catch (err) {
     console.error("[Seed] FAILED — the site will start without it:", err);
   }
@@ -184,7 +222,7 @@ if (isCli) {
     console.error("DATABASE_URL is not set.");
     process.exit(1);
   }
-  seedCatalog()
+  seedCatalog({ refreshReports: process.argv.includes("--refresh") })
     .then(() => process.exit(0))
     .catch((err) => {
       console.error("Seed failed:", err);

@@ -148,6 +148,17 @@ que un reinicio del contenedor no lo vuelva a disparar cada vez.
 DATABASE_URL="..." pnpm seed
 ```
 
+Los COA viven en `client/public/lab-reports/`, servidos por el propio sitio:
+enlazarlos a un dominio ajeno los deja fuera de nuestro control, y si ese sitio
+los mueve se rompen los cuatro a la vez.
+
+`SEED_CATALOG=true` carga lo que falte sin tocar lo existente.
+`SEED_CATALOG=refresh` además **reapunta** los reportes de estos cuatro
+productos a los PDF de `seed.ts` — es lo que hay que usar cuando el laboratorio
+manda una versión nueva del mismo COA, porque crear otro dejaría dos enlaces
+publicados para el mismo lote. Pisa lo que el panel tenga guardado para esos
+cuatro, por eso no es el comportamiento por defecto.
+
 Crea el producto de línea **Quantum Complex** (sin publicar, sin COA: es a
 donde apuntan los códigos de verificación, que se imprimen para la línea y no
 para un sabor) y los cuatro sabores de **QUANTUM COMPLEX** (Strawberry, Cherry Berry,
